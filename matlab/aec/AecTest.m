@@ -1,26 +1,28 @@
 clear all
 
+% STFT parameters
+windowLen = 400;
+overlapLen = 160;
+fftLen = 512;
+
 % AEC parameters
 echoLen  = 160;     % in ms
 frameLen  = 10;     % in ms
 nu_nlms = 0.8;
-filterPaths = 1;    % number of filter path
 
-testcase = 3;
+% Configs
+algorithm = 1;
+testcase = 2;
 
 if testcase == 1
-    micInFile = 'data/synthetic/noise_mic20.wav';
-    spkInFile = 'data/synthetic/noise_spk.wav';
-    micOutFile = '~/out20_linear.wav';
+    micInFile = 'data/noise_mic20.wav';
+    spkInFile = 'data/noise_spk.wav';
+    micOutFile = 'data/out.wav';
 elseif testcase == 2
-    micInFile = 'data/single_talk/micin_48k.wav';
-    spkInFile = 'data/single_talk/spkin_48k.wav';
-    micOutFile = '~/out_linear.wav';
+    micInFile = 'data/micin_16k.wav';
+    spkInFile = 'data/spkin_16k.wav';
+    micOutFile = 'data/out.wav';
 elseif testcase == 3
-    micInFile = '~/Downloads/mic.wav';
-    spkInFile = '~/Downloads/ref.wav';
-    micOutFile = '~/Downloads/out.wav';
-elseif testcase == 4
     micInFile = 'data/mic_c0.wav';
     spkInFile = 'data/spk.wav';
     micOutFile = 'data/out.wav';
@@ -37,10 +39,10 @@ if size(spk, 2) > 1
     spk(:, 2:end) = [];
 end;
 
-spk = spk(480:end);
-
 assert(mic_fs == spk_fs);      % does not support re-sampling
+
 fs = mic_fs;
+
 if (fs == 16000)
     freqStart = 100;
     freqEnd = 7800;
@@ -52,6 +54,7 @@ elseif (fs == 48000)
 else
     error('unsupported sampling rate');
 end;
+
 assert(fs/2 > freqEnd);
 
 frameSize = frameLen*fs/1000;
@@ -63,14 +66,16 @@ firstBand = freqStart/bandInterval;       % C style index
 lastBand  = freqEnd/bandInterval - 1;     % C style index
 usedBands = (firstBand+1:lastBand+1);
 
-[micSpec, f, t] = stft(mic, 400, 160, 512, fs);
-[spkSpec, f, t] = stft(spk, 400, 160, 512, fs);
+[micSpec, f, t] = stft(mic, windowLen, overlapLen, fftLen, fs);
+[spkSpec, f, t] = stft(spk, windowLen, overlapLen, fftLen, fs);
 
-% cleSpec = Nlms(micSpec, spkSpec);
+if algorithm == 0
+    [cleSpec, erle] = NlmsLi(micSpec, spkSpec, numTaps, nu_nlms);
+elseif algorithm == 1
+    cleSpec = Nlms(micSpec, spkSpec, numTaps, nu_nlms);
+end;
 
-[cleSpec, erle] = NlmsLi(micSpec, spkSpec, 16, 0.8);
-
-[cleOut, t] = istft(cleSpec, 400, 160, 512, fs);
+[cleOut, t] = istft(cleSpec, windowLen, overlapLen, fftLen, fs);
 
 % Inverse filterbank analysis
 
