@@ -11,7 +11,7 @@ frameLen  = 10;     % in ms
 nu_nlms = 0.8;
 
 % Configs
-algorithm = 1;
+algorithm = 2;
 testcase = 2;
 
 if testcase == 1
@@ -73,6 +73,8 @@ if algorithm == 0
     [cleSpec, erle] = NlmsLi(micSpec, spkSpec, numTaps, nu_nlms);
 elseif algorithm == 1
     cleSpec = Nlms(micSpec, spkSpec, numTaps, nu_nlms);
+elseif algorithm == 2
+    cleSpec = Apa(micSpec, spkSpec, numTaps, nu_nlms);
 end;
 
 [cleOut, t] = istft(cleSpec, windowLen, overlapLen, fftLen, fs);
