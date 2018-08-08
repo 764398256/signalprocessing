@@ -5,7 +5,7 @@
 % Author: M.Sc. Eng. Hristo Zhivomirov        12/21/13 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [stft, f, t] = stft(x, wlen, hop, nfft, fs)
+function [stft, f, t] = Stft(x, wlen, hop, nfft, fs)
 
 % function: [stft, f, t] = stft(x, wlen, hop, nfft, fs)
 % x - signal in the time domain

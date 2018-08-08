@@ -5,7 +5,7 @@
 % Author: M.Sc. Eng. Hristo Zhivomirov        12/26/13 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [x, t] = istft(stft, wlen, hop, nfft, fs)
+function [x, t] = Istft(stft, wlen, hop, nfft, fs)
 
 % function: [x, t] = istft(stft, wlen, hop, nfft, fs)
 % stft - STFT matrix (only unique points, time across columns, freq across rows)
@@ -63,10 +63,10 @@ else                                % even nfft includes Nyquist point
 end
 
 % scale the signal
-W0 = sum(win.^2);                  
-x = x.*hop/W0;                      
+W0 = sum(win.^2);
+x = x.*hop/W0;
 
 % generate time vector
-t = (0:xlen-1)/fs;                 
+t = (0:xlen-1)/fs;
 
 end

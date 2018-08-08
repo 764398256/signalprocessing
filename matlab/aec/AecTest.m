@@ -66,8 +66,8 @@ firstBand = freqStart/bandInterval;       % C style index
 lastBand  = freqEnd/bandInterval - 1;     % C style index
 usedBands = (firstBand+1:lastBand+1);
 
-[micSpec, f, t] = stft(mic, windowLen, overlapLen, fftLen, fs);
-[spkSpec, f, t] = stft(spk, windowLen, overlapLen, fftLen, fs);
+[micSpec, f, t] = Stft(mic, windowLen, overlapLen, fftLen, fs);
+[spkSpec, f, t] = Stft(spk, windowLen, overlapLen, fftLen, fs);
 
 if algorithm == 0
     [cleSpec, erle] = NlmsLi(micSpec, spkSpec, numTaps, nu_nlms);
@@ -77,7 +77,7 @@ elseif algorithm == 2
     cleSpec = Apa(micSpec, spkSpec, numTaps, nu_nlms);
 end;
 
-[cleOut, t] = istft(cleSpec, windowLen, overlapLen, fftLen, fs);
+[cleOut, t] = Istft(cleSpec, windowLen, overlapLen, fftLen, fs);
 
 % Inverse filterbank analysis
 
