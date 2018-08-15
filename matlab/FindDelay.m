@@ -2,102 +2,91 @@ clear all;
 close all;
 
 % Config
-dtmf = 0;
+power = 0.0001;
 
-micInFile = '/home/mobvoi/work/data/13_mic.wav';
-spkInFile = '/home/mobvoi/work/data/13_ref.wav';
+micInFile = '/home/mobvoi/work/data/kaiguanjiPC_ch3.wav';
+spkInFile = '/home/mobvoi/work/data/kaiguanjiPC_ch4.wav';
 
 [mic, mic_fs] = audioread(micInFile);
-if size(mic, 2) > 1
-    mic(:, 2:end) = [];
-end;
+mic = mic(:,1);
 
 [spk, spk_fs] = audioread(spkInFile);
-if size(spk, 2) > 1
-    spk(:, 2:end) = [];
-end;
+spk = spk(:,1);
 
 assert(mic_fs == spk_fs);
 fs = mic_fs;
 
 nSamples = min(size(spk, 1), size(mic,1));
 
-for ii = 1:nSamples
-    mic(ii,1) = mic(ii,1)^2;
+frameSize = ceil(10 * fs / 1000);
+
+nFrames = ceil(nSamples/frameSize);
+spkPower = zeros(nFrames, 1);
+
+for ii = 1:nFrames-1
+   spkPower(ii) = var(spk((ii-1)*frameSize + (1:frameSize)));
 end;
 
-for ii = 1:nSamples
-    spk(ii,1) = spk(ii,1)^2;
+vad = zeros(nSamples, 1);
+
+factor = 0.8;
+for ii = 1:frameSize:nSamples
+    if spkPower(ceil(ii/frameSize)) > power
+        temp = 1;
+    else
+        temp = 0;
+    end;
+    if ii == 1
+        vad(ii + (0:frameSize-1)) = temp;
+    else
+        vad(ii + (0:frameSize-1)) = factor * vad(ii -1) + (1 - factor) * temp;
+    end;
 end;
 
+vad(vad > 0.01) = 1;
+vad(vad ~= 1) = 0;
+
+mic = mic.*mic;
+spk = spk.*spk;    
 mic = smooth(mic, 2);
-
 spk = smooth(spk, 2);
 
-delayTime = zeros(nSamples, 1);
+riseIndex = 0;
+descentIndex = 0;
 
-if dtmf == 1    
-    nFrames = nSamples;
-    vad = zeros(nFrames, 1);
-    factor = 0.99;
-    power = 0.01;
-    for ii = 1:nFrames
-        if spk(ii, 1)^2 > power
-            temp = 1;
-        else
-            temp = 0;
-        end;
-        if ii == 1
-            vad(ii) = temp;
-        else
-            vad(ii) = factor * vad(ii -1) + (1 - factor) * temp;
-        end;
+steps = zeros(1, 1);
+jj = 1;
+for ii = 2:nSamples
+    if(vad(ii-1) > 0 && vad(ii) == 0)
+        descentIndex = ii;
     end;
-    
-    if(0)
-        figure(99);
-        plot(spk, 'g');
-        hold on;
-        plot(vad* 0.1, 'r');
+    if(vad(ii-1) == 0 && vad(ii) > 0 && descentIndex > 0)
+        riseIndex = ii;
+        steps(jj) = ceil((descentIndex + riseIndex)/2);
+        jj = jj + 1;
+        riseIndex = 0;
+        descentIndex = 0;
     end;
-    
-    startIndex = 0;
-    stopIndex = 0;
-    
-    offset = 1600;
-    
-    for ii = 1:nFrames
-        if(vad(ii) > 0.001 && startIndex == 0)
-            startIndex = ii;
-        elseif(vad(ii) < 0.001 && startIndex > 0)
-            stopIndex = -1;
-        elseif(vad(ii) > 0.001 && stopIndex == -1)
-            stopIndex = ii;
-            startIndex = startIndex - offset;
-            stopIndex = stopIndex - offset;
-            A = xcorr(spk(startIndex:stopIndex, 1), mic(startIndex:stopIndex, 1));
-            [value, index] = max(A);
-            delay = (stopIndex - startIndex) - index;
-            delayTime(ii) = delay / 16000;
-            startIndex = 0;
-            stopIndex = 0;
-        end;
-    end;
-    
-else
-    
-    stepLen = ceil(500 * fs / 1000);
-    overlapLen = ceil(stepLen / 2);
-    delayTime = zeros(nSamples, 1);
-    for ii = 1:overlapLen:nSamples-stepLen
-        A = spk(ii + (1:stepLen));
-        B = mic(ii + (1:stepLen));
-        result = xcorr(A, B);
-        [value, index] = max(result);
-        delay = stepLen - index;
-        delayTime(ii) = delay / fs;
+end;
+
+assert(length(steps) > 1);
+
+preDelay = 0;
+
+delayTime = zeros(nSamples, 1);
+for ii = 2:length(steps)
+    len = steps(ii) - steps(ii-1);
+    if len < fs
+        delayTime(steps(ii-1)) = preDelay;
+    else
+        A = xcorr(spk(steps(ii-1):steps(ii), 1), mic(steps(ii-1):steps(ii), 1));
+        [value, index] = max(A);
+        delay = (steps(ii) -  steps(ii-1)) - index;
+        delayTime(steps(ii-1)) = delay / fs;
+        preDelay = delay / fs;
     end;
 end;
 
 figure(100);
-plot(delayTime);
+time = (0:length(delayTime)-1)/fs;
+plot(time, delayTime);
