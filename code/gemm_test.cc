@@ -9,16 +9,25 @@
  * x86_64 linux pc 4613ms
  */
 
-#include <cstdlib>
-#include <sys/time.h>
-#include <iostream>
-#include <ctime>
-#include <ratio>
 #include <chrono>
+#include <cstdlib>
+#include <ctime>
+#include <iostream>
+#include <ratio>
+#include <sys/time.h>
+
+#include <string.h>
+
+#define DIM 64
 
 typedef int32_t int32;
 
-typedef enum CBLAS_TRANSPOSE {CblasNoTrans=111, CblasTrans=112, CblasConjTrans=113, CblasConjNoTrans=114} CBLAS_TRANSPOSE;
+typedef enum CBLAS_TRANSPOSE {
+  CblasNoTrans = 111,
+  CblasTrans = 112,
+  CblasConjTrans = 113,
+  CblasConjNoTrans = 114
+} CBLAS_TRANSPOSE;
 
 template <typename Real>
 Real *CreateMatrix(const int32 row, const int32 col, const int32 stride,
@@ -58,33 +67,57 @@ long long currentTimeInMilliseconds() {
 // C and OpenBlas operations.
 
 int main(int argc, const char *argv[]) {
-  int32 A_rows = 512, A_cols = 512, A_stride = 512, B_rows = 512, B_cols = 512,
-        B_stride = 512, C_rows = 512, C_cols = 512, C_stride = 512;
-  //duration<double> time_span;
-  float alpha = 0.5, beta = 1.5;
+  int32 A_rows = DIM, A_cols = DIM, A_stride = DIM, B_rows = DIM, B_cols = DIM,
+        B_stride = DIM, C_rows = DIM, C_cols = DIM, C_stride = DIM;
+  // duration<double> time_span;
+  float alpha = 1.1f, beta = 0.5f;
 
   int32 iter = 10;
 
-  long long slow_cost = 0;
+  long long cpp_cost = 0;
+  long long c_cost = 0;
   for (int32 n = 0; n < iter; ++n) {
     std::cout << "C operation: iteration " << n << std::endl;
     float *A = CreateMatrix<float>(A_rows, A_cols, A_stride, 'A');
     float *B = CreateMatrix<float>(B_rows, B_cols, B_stride, 'B');
     float *X = CreateMatrix<float>(C_rows, C_cols, C_stride, 'C');
 
-    long long c_start = currentTimeInMilliseconds();
+    float *Y = (float *)malloc(C_rows * C_stride * sizeof(float));
+    memcpy(Y, X, C_rows * C_stride * sizeof(float));
+
+    long long cpp_start = currentTimeInMilliseconds();
     slow_gemm<float>(alpha, CblasNoTrans, A, A_rows, A_cols, A_stride,
                      CblasNoTrans, B, B_stride, beta, X, C_rows, C_cols,
                      C_stride);
+    long long cpp_end = currentTimeInMilliseconds();
+
+    long long c_start = currentTimeInMilliseconds();
+    for (int i = 0; i < DIM; ++i) {
+      for (int j = 0; j < DIM; ++j) {
+        float temp = 0;
+        for (int k = 0; k < DIM; ++k) {
+          temp += A[i * DIM + k] * B[k * DIM + j];
+        }
+        Y[i * DIM + j] *= beta;
+        Y[i * DIM + j] += alpha * temp;
+      }
+    }
     long long c_end = currentTimeInMilliseconds();
 
-    slow_cost += c_end - c_start;
+    float dist = EuclideanDistance(X, Y, C_rows, C_cols, C_stride);
+    std::cout << "Euclidean Distance " << dist << std::endl;
+
+    cpp_cost += cpp_end - cpp_start;
+    c_cost += c_end - c_start;
+
     DestroyMatrix<float>(A);
     DestroyMatrix<float>(B);
     DestroyMatrix<float>(X);
+    free(Y);
   }
-  std::cout << "C operation takes: " << slow_cost << " ms" << std::endl;
-  
+  std::cout << "C operation takes: cpp " << cpp_cost << " ms"
+            << " c " << c_cost << " ms" << std::endl;
+
   return 0;
 }
 
@@ -97,8 +130,9 @@ Real *CreateMatrix(const int32 row, const int32 col, const int32 stride,
   srand(seed);
   for (int32 r = 0; r < row; ++r) {
     for (int32 c = 0; c < col; ++c) {
-      data[r * stride + c] = -1.0 + static_cast<Real>(rand()) /
-                                        (static_cast<Real>(RAND_MAX / 2.0));
+      data[r * stride + c] =
+          -1.0 +
+          static_cast<Real>(rand()) / (static_cast<Real>(RAND_MAX / 2.0));
     }
   }
   return data;
