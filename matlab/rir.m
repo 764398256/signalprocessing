@@ -1,6 +1,7 @@
-function x = rip(fs, t0, decay)
-N=t0*fs;
-a = -(decay/20)*log(10)/t0;
+function x = rir(fs, t)
+N=t*fs;
+decay = 60;
+a = -(decay/20)*log(10)/t;
 x=ones(N,1);
 for ii=1:N
     x(ii)=exp(1)^(a*ii/fs);
