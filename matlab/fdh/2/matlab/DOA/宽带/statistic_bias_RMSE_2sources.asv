@@ -1,0 +1,91 @@
+clear all
+
+global  P   d  c M Fl Fh
+
+c = 340;
+P = 8;
+M = 2;
+bin_num = 33;
+snapshot = 100;
+Fl = 80;
+Fh = 120;
+f0 = 100;
+d = c/(2*f0);
+
+tic
+bias_ave = zeros(3,50,10);
+rmse_ave = zeros(3,50,10);
+
+theta0 = [11,13]*pi/180;
+sigma_theta = [1];
+for sigma_sequence = 1:length(sigma_theta)
+    p_num = 0;
+    sigma_sequence
+    for SNR = 5:5:25
+        SNR
+        bias_d = 0;
+        rmse_d = 0;
+        bias_p = 0;
+        rmse_p = 0;
+        bias_r = 0;
+        rmse_r = 0;
+        
+        EXP_NUM = 500;
+        for exp_num = 1:EXP_NUM
+            X = generate_signal_Wbins(Fl,Fh,bin_num,snapshot,SNR,amplitude,theta0);
+
+            theta = [9,12,15]*pi/180;
+
+            [V,D] = music_eig(X);
+
+            [V_r,D_r] = RSS_eig(X,theta,f0);
+
+            [V_T,D_T,f0_T] = TCT_eig(X,theta);
+
+            [Vr,Dr] = RSS_eig(x,theta,f0,Fl,Fh);
+
+            step = 0.01;
+            J = zeros(1,180/step);
+            Jd = J;
+            Jp = J;
+            Jr = J;
+
+            t = 0;
+            for k = 1:step:180.99
+                t = t+1;
+                theta = (k-90)*pi/180;
+                
+                 Jm(t) = music_DOA(V,theta);
+    Jr(t) = RSS_DOA(V_r,f0,theta);
+    Jt(t) = TCT_DOA(V_T,f0_T,theta);
+
+                Jd(t) = KR_DOA_dd(Ud,theta);
+
+                Jp(t) = RSS_DOA(Vp,f0,theta);
+
+                Jr(t) = RSS_DOA(Vr,f0,theta);
+
+            end
+            
+            peak_Jd = peak_find_rmse(Jd,step);
+            rmse_d_temp = crmse(peak_Jd,theta0);
+            rmse_d = rmse_d+rmse_d_temp;
+
+            peak_Jp = peak_find_rmse(Jp,step);
+            rmse_p_temp = crmse(peak_Jp,theta0);
+            rmse_p = rmse_p+rmse_p_temp;
+
+            peak_Jr = peak_find_rmse(Jr,step);
+            rmse_r_temp = crmse(peak_Jr,theta0);
+            rmse_r = rmse_r+rmse_r_temp;
+
+
+        end
+        p_num = p_num+1;
+
+        rmse_ave(1,p_num,sigma_sequence) = sqrt(rmse_d/EXP_NUM/M);
+        rmse_ave(2,p_num,sigma_sequence) = sqrt(rmse_p/EXP_NUM/M);
+        rmse_ave(3,p_num,sigma_sequence) = sqrt(rmse_r/EXP_NUM/M);
+    end
+end
+toc

@@ -1,0 +1,20 @@
+
+
+% SNR = -10:5:30;
+% x = [0.01,0.04,0.1,0.36,0.88,0.998,1,1,1];
+% plot(SNR,Pro(1,1:length(SNR)));
+% hold on
+% plot(SNR,Pro(2,1:length(SNR)));
+% plot(SNR,x);
+
+SNR = 5:5:35;
+Pro = rmse_ave(:,:,1);
+x = [0.4,0.2026,0.0932,0.06,0.06,0.06,0.055];
+Pro(1,6) = 0.0227;
+Pro(2,6) = 0.0934;
+Pro(1,7) = 0.0092;
+Pro(2,7) = 0.0932;
+plot(SNR,Pro(1,1:length(SNR)));
+hold on
+plot(SNR,Pro(2,1:length(SNR)));
+% plot(SNR,x);
